@@ -88,6 +88,108 @@ The token is configured via the `FRONTEND_API_TOKEN` environment variable.
 - Ruby 3.2.2 (for local development)
 - SQLite3
 
+## Environment Variables Configuration
+
+The application uses `dotenv-rails` to load environment variables from `.env` and `.env.test` files. These files are automatically loaded based on the Rails environment.
+
+### Setting up `.env` (Development/Production)
+
+Create a `.env` file in the root directory of the project for development and production environments:
+
+```bash
+# Create .env file
+touch .env
+```
+
+Add the following variables to `.env`:
+
+```bash
+# API Authentication Token
+# This token must be included in the X-API-TOKEN header for all API requests
+FRONTEND_API_TOKEN=your-secret-token-here
+
+# Rails Master Key (required for production)
+# You can find this in config/master.key or generate a new one with:
+# bin/rails credentials:edit
+RAILS_MASTER_KEY=your-master-key-here
+```
+
+**Important Notes:**
+- Replace `your-secret-token-here` with a secure, randomly generated token
+- The `RAILS_MASTER_KEY` is required for production deployments
+- Never commit `.env` files to version control (they should be in `.gitignore`)
+- Generate a strong token: `openssl rand -hex 32`
+
+### Setting up `.env.test` (Test Environment)
+
+Create a `.env.test` file in the root directory for the test environment:
+
+```bash
+# Create .env.test file
+touch .env.test
+```
+
+Add the following variables to `.env.test`:
+
+```bash
+# API Authentication Token for tests
+# This should match the token used in your test suite
+FRONTEND_API_TOKEN=test-api-token-12345
+```
+
+**Important Notes:**
+- The test environment uses `.env.test` instead of `.env`
+- You can use a simpler token for tests (e.g., `test-api-token-12345`)
+- This token is used by the test suite to authenticate API requests
+- The `RAILS_MASTER_KEY` is not required for tests
+
+### Example: Complete Setup
+
+```bash
+# 1. Create .env file for development
+cat > .env << EOF
+FRONTEND_API_TOKEN=$(openssl rand -hex 32)
+RAILS_MASTER_KEY=$(cat config/master.key)
+EOF
+
+# 2. Create .env.test file for tests
+cat > .env.test << EOF
+FRONTEND_API_TOKEN=test-api-token-12345
+EOF
+
+# 3. Verify files are created (they should be in .gitignore)
+ls -la .env .env.test
+```
+
+### Environment Variables Reference
+
+| Variable | Description | Required | Environment | Example |
+|----------|-------------|----------|-------------|---------|
+| `FRONTEND_API_TOKEN` | API authentication token | Yes | All | `a1b2c3d4e5f6...` |
+| `RAILS_MASTER_KEY` | Rails master key for encrypted credentials | Yes (production) | Production | `abc123...` |
+| `RAILS_ENV` | Rails environment | No | All | `development`, `test`, `production` |
+
+### Security Best Practices
+
+1. **Never commit `.env` or `.env.test` to version control**
+   - These files should be in `.gitignore`
+   - Use `.env.example` as a template (without sensitive values)
+
+2. **Use different tokens for different environments**
+   - Development: Use a strong, randomly generated token
+   - Test: Use a simple, predictable token for tests
+   - Production: Use a very strong, randomly generated token
+
+3. **Rotate tokens regularly**
+   - Especially if they might have been compromised
+   - Update both the `.env` file and any clients using the API
+
+4. **Use strong tokens**
+   ```bash
+   # Generate a secure token
+   openssl rand -hex 32
+   ```
+
 ## Quick Start with Docker
 
 ### 1. Clone the repository
@@ -99,14 +201,7 @@ cd task-tracker-api
 
 ### 2. Set up environment variables
 
-Create a `.env` file in the root directory:
-
-```bash
-FRONTEND_API_TOKEN=your-secret-token-here
-RAILS_MASTER_KEY=<your-master-key-from-config/master.key>
-```
-
-**Note**: The `RAILS_MASTER_KEY` is required for production. You can find it in `config/master.key` or generate a new one.
+Follow the [Environment Variables Configuration](#environment-variables-configuration) section above to create your `.env` file with the required variables.
 
 ### 3. Build and run with Docker Compose
 
@@ -170,15 +265,7 @@ bin/rails db:create db:migrate
 
 ### 3. Set environment variables
 
-```bash
-export FRONTEND_API_TOKEN=your-secret-token-here
-```
-
-Or create a `.env` file (if using dotenv-rails):
-
-```bash
-FRONTEND_API_TOKEN=your-secret-token-here
-```
+Follow the [Environment Variables Configuration](#environment-variables-configuration) section above to create your `.env` file. The `dotenv-rails` gem will automatically load it when you start the server.
 
 ### 4. Start the server
 
@@ -190,13 +277,21 @@ The API will be available at `http://localhost:3000`
 
 ## Running Tests
 
+**Important**: Make sure you have created a `.env.test` file with the `FRONTEND_API_TOKEN` variable before running tests. See the [Environment Variables Configuration](#environment-variables-configuration) section for details.
+
 ### With Docker
 
+When running tests in Docker, you need to override the `RAILS_ENV` to `test`:
+
 ```bash
-docker-compose run --rm api bin/rails test
-# or for RSpec
-docker-compose run --rm api bin/rails spec
+# Run Rails tests
+docker-compose run --rm -e RAILS_ENV=test api bin/rails test
+
+# Run RSpec tests
+docker-compose run --rm -e RAILS_ENV=test api bundle exec rspec
 ```
+
+**Note**: The `-e RAILS_ENV=test` flag ensures tests run in the test environment, which will load `.env.test` file automatically.
 
 ### Locally
 
@@ -210,6 +305,8 @@ bundle exec rspec
 # Run specific test file
 bundle exec rspec spec/requests/api/v1/tasks/index_spec.rb
 ```
+
+**Note**: The test environment automatically loads `.env.test` file. Make sure your test token matches the one used in your test helpers.
 
 ## Example API Usage
 
@@ -285,6 +382,8 @@ bin/rails db:rollback
 
 ## Environment Variables
 
+For detailed information about setting up environment variables, see the [Environment Variables Configuration](#environment-variables-configuration) section above.
+
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
 | `FRONTEND_API_TOKEN` | API authentication token | Yes | - |
@@ -335,9 +434,6 @@ Ensure the `FRONTEND_API_TOKEN` environment variable is set and matches the toke
 5. Ensure all tests pass
 6. Submit a pull request
 
-## License
-
-[Add your license here]
 
 ## Support
 
